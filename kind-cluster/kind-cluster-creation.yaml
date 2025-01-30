@@ -1,0 +1,26 @@
+
+# This is a sample Kind cluster creation file
+# This file is used to create a Kind cluster with 1 control-plane node and 2 worker nodes\
+# The control-plane node has an extra port mapping for port 30005
+
+# The file is in YAML format
+# The file has a single resource of kind Cluster
+# The resource has the following fields:
+# - apiVersion: The API version of the resource
+# - kind: The kind of the resource
+# - nodes: The list of nodes in the cluster
+#   - role: The role of the node
+#   - extraPortMappings: The list of extra port mappings for the node
+#     - containerPort: The container port to map
+#     - hostPort: The host port to map
+
+---
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30005
+    hostPort: 30005
+- role: worker
+- role: worker

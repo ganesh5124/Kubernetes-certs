@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  labels:
+    app: nginx-app
+    env: demo 
+spec: 
+  replicas: 1
+  template:
+    metadata:
+      name: nginx-app
+      labels:
+        env: demo 
+        app: nginx-app
+        type: nginx
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx:latest
+          ports:
+          - containerPort: 80
+  selector: 
+    matchLabels:
+      env: demo
+      app: nginx-app
+      type: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+spec:
+  selector:
+    app: nginx-app
+    env: demo
+    type: nginx
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  ports:
+  - nodePort: 30002
+    port: 80
+    targetPort: 80
