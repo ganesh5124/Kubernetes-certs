@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demopv
+spec:
+  capacity:
+    storage: 3Gi
+  volumeMode: Filesystem                   # EBS is a block storage, but using Filesystem for mounting
+  accessModes:
+    - ReadWriteOnce                        # EBS supports RWO only
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  awsElasticBlockStore:
+    volumeID: "vol-0db5ed9e74731ee82"      # Your EBS Volume ID
+    fsType: "ext4"                         # Recommended for EBS
