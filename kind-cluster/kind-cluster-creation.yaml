@@ -22,6 +22,10 @@ nodes:
   extraPortMappings:
   - containerPort: 30005
     hostPort: 30005
+  - containerPort: 80     ## HTTP port
+    hostPort: 80          ## HTTP port for Ingrerss
+  - containerPort: 443   ## HTTPS port  
+    hostPort: 443       ## HTTPS port for Ingress
 - role: worker
   extraPortMappings:
   - containerPort: 30006
