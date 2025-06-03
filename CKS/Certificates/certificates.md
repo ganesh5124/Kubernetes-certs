@@ -113,6 +113,36 @@ This creates two files:
 * The kube proxy manages network rules on worker nodes and requires a dedicated client certificate (kube-proxy.crt and kube-proxy.key).
 ![alt text](image.png)
 
+## TLS in Kubernetes Certificate Creation
+* generate certificates for a Kubernetes cluster using OpenSSL
+
+Generate the CA Certificate
+* Generate the CA private key, create a certificate signing request (CSR) with the common name "KUBERNETES-CA", and then self-sign it
+
+```
+    openssl genrsa -out ca.key 2048
+    openssl req -new -key ca.key -subj "/CN=KUBERNETES-CA" -out ca.csr
+    openssl x509 -req -in ca.csr -signkey ca.key -out ca.crt
+```
+
+## Admin User Certificates
+* For the admin user, a private key is generated first. Then, a CSR is created with the common name "kube-admin". The certificate is signed using the CA certificate and private key. This naming is essential since it is used within audit logs and other system functions.
+
+```
+    openssl genrsa -out admin.key 2048
+    openssl req -new -key admin.key -subj "/CN=kube-admin" -out admin.csr
+    openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt
+```
+
+* To differentiate admin users from basic users, you can include group details in the CSR by specifying the Organizational Unit (OU). For example, adding the group system:masters grants administrative privileges:
+
+```
+    openssl genrsa -out admin.key 2048
+    openssl req -new -key admin.key -subj "/CN=kube-admin/O=system:masters" -out admin.csr
+    openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt
+```
+
+
 
 
 
