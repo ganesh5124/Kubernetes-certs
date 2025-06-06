@@ -142,10 +142,30 @@ Generate the CA Certificate
     openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt
 ```
 
+## EtcD Server Certificate
+* For the etcd server, which is critical in high-availability deployments, the certificate generation process is analogous to that for client
+* The etcd server may also require additional peer certificates for secure inter-cluster communication.
 
 
-
-
+```
+    etcd:
+        --advertise-client-urls=https://127.0.0.1:2379
+        --key-file=/path-to-certs/etcdserver.key
+        --cert-file=/path-to-certs/etcdserver.crt
+        --client-cert-auth=true
+        --data-dir=/var/lib/etcd
+        --initial-advertise-peer-urls=https://127.0.0.1:2380
+        --initial-cluster=master=https://127.0.0.1:2380
+        --listen-client-urls=https://127.0.0.1:2379
+        --listen-peer-urls=https://127.0.0.1:2380
+        --name=master
+        --peer-cert-file=/path-to-certs/etcdpeer1.crt
+        --peer-client-cert-auth=true
+        --peer-key-file=/path/to/etcd/peer.key
+        --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+        --snapshot-count=10000
+        --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+```
 
 
 
