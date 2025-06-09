@@ -23,3 +23,24 @@ spec:
     - name: pv-volume
       persistentVolumeClaim:
         claimName: demopvc
+
+---
+# Create a pod using the PVC
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ebs-pod
+spec:
+  nodeSelector: 
+    topology.kubernetes.io/zone: us-east-1a
+  containers:
+  - name: app
+    image: busybox
+    command: [ "sh", "-c", "echo Hello Kubernetes! && sleep 3600" ]
+    volumeMounts:
+    - mountPath: "/data"
+      name: ebs-storage
+  volumes:
+  - name: ebs-storage
+    persistentVolumeClaim:
+      claimName: ebs-pvc

@@ -14,3 +14,30 @@ spec:
   awsElasticBlockStore:
     volumeID: "vol-0db5ed9e74731ee82"      # Your EBS Volume ID
     fsType: "ext4"                         # Recommended for EBS
+
+---
+### EBS Volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ebs-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  csi:
+    driver: ebs.csi.aws.com
+    fsType: ext4
+    volumeHandle: vol-096b0830b019e8da2 
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - us-east-1a
+
+

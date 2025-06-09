@@ -9,3 +9,18 @@ spec:
       storage: 500Mi
   accessModes:
   - ReadWriteOnce                  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+
+---
+# Create a PersistentVolumeClaim (PVC)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-pvc
+spec:
+  storageClassName: ""
+  volumeName: ebs-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
