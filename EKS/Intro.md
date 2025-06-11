@@ -15,4 +15,6 @@
 * Running cost-effective batch processing and big data workloads
 * Securing application and ensuring compliance
 
+Amazon EKS nodes run in your AWS account and connect to your cluster’s control plane via the API server endpoint and a certificate file that is created for your cluster.
+
 
