@@ -44,3 +44,52 @@ spec:
   - name: ebs-storage
     persistentVolumeClaim:
       claimName: ebs-pvc
+########## Secret Volume Example ##########
+---
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: secret-1401
+  namespace: alpha
+  labels:
+    app: secret-1401
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: secret-1401
+    image: busybox
+    command:
+    - /bin/sh
+    - -c
+    - sleep 4800
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /etc/secret-volume
+
+
+---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      labels:
+        run: secret-1401
+      name: secret-1401
+      namespace: admin1401
+    spec:
+      volumes:
+      - name: secret-volume
+        # secret volume
+        secret:
+          secretName: dotfile-secret
+      containers:
+      - command:
+        - sleep
+        - "4800"
+        image: busybox
+        name: secret-admin
+        # volumes' mount path
+        volumeMounts:
+        - name: secret-volume
+          readOnly: true
+          mountPath: "/etc/secret-volume"
