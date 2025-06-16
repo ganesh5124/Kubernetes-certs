@@ -10,7 +10,6 @@ spec:
   accessModes:
     - ReadWriteOnce                        # EBS supports RWO only
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
   awsElasticBlockStore:
     volumeID: "vol-0db5ed9e74731ee82"      # Your EBS Volume ID
     fsType: "ext4"                         # Recommended for EBS
