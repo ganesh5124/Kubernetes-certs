@@ -88,3 +88,135 @@ spec:
   - name: secret-volume
     secret:
       secretName: dotfile-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-service
+  namespace: marketing
+spec:
+  selector:
+    name: redis-pod
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret-xxdf
+data:
+  DB_Host: sql01
+  DB_User: root
+  DB_Password: password123
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-analytics
+spec:
+  resources:
+    requests:
+      storage: 100Mi
+  accessModes:
+  - ReadWriteMany                  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+  hostPath:
+    path: /pv/data-analytics
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mypv
+spec:
+  hostPath:
+    path: /pv/data-analytics
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: redis-access
+  spec:
+    podSelector:
+      matchLabels:
+        app: redis
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            access: redis
+      ports:
+      - protocol: TCP
+        port: 6379
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sega
+  labels:
+    app: sega
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: tails
+    image: busybox
+    command:
+    - sh
+    - -c
+    args:
+    - "sleep 3600"
+  - name: sonic
+    image: nginx
+    env:
+    - name: NGINX_PORT
+      value: "8080"
+
+---
+kubectl create secret generic db-secret-xxdf --from-literal=DB_Host=sql01 --from-literal=DB_User=root --from-literal=DB_Password=password123
