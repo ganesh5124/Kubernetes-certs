@@ -39,6 +39,6 @@ spec:
     type: nginx
   type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
   ports:
-  - nodePort: 30002
+  - nodePort: 30006
     port: 80
     targetPort: 80
