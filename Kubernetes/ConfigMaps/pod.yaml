@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-pod
+  labels:
+    app: config-pod
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: config-pod
+    image: nginx
+    volumeMounts:
+    - name: configmap-vol
+      mountPath: /etc/config
+      readOnly: true
+
+  volumes:
+    - name: configmap-vol
+      configMap:
+        name: config-vol
