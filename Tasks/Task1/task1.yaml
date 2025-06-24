@@ -60,21 +60,26 @@ spec:
   containers:
   - name: time-check
     image: busybox
+    env:
+    - name: TIME_FREQ
+      valueFrom:
+            configMapKeyRef:
+              name: time-config
+              key: TIME_FREQ
     command:
     - /bin/sh
     - -c
     - |
-      TIME_FREQ=$(cat /opt/time/TIME_FREQ)
-      echo "Time frequency is set to $TIME_FREQ seconds"
       # Infinite loop to log the current date and time at the specified frequency
     - while true; do date; sleep $TIME_FREQ;done > /opt/time/time-check.log
     volumeMounts:
     - name: time-volume
       mountPath: /opt/time
+    - name: time-volume-config
+      mountPath: /opt/time/TIME_FREQ
   volumes:
   - name: time-volume
-    configMap:
-      name: time-config
+    emptyDir: {}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -95,7 +100,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1
+      maxUnavailable: 2
   selector:
     matchLabels:
       app: nginx-deploy
@@ -145,3 +150,31 @@ spec:
       - name: redis-config
         configMap:
           name: redis-config
+
+# We have deployed a new pod called secure-pod and a service called secure-service. Incoming or Outgoing connections to this pod are not working.
+# Troubleshoot why this is happening.
+
+# Make sure that incoming connection from the pod webapp-color are successful.
+
+# Important: Don't delete any current objects deployed.
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: secure-pod
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: webapp-color
+    ports:
+    - protocol: TCP
+      port: 80
