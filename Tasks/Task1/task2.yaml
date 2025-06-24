@@ -1,0 +1,355 @@
+# local-sc.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+---
+# logger-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-deployment
+  namespace: logging-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logger
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      volumes:
+        - name: logger
+          emptyDir: {}
+      initContainers:
+        - name: log-agent
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              touch /var/log/app/app.log
+              tail -f /var/log/app/app.log
+          restartPolicy: Always
+          volumeMounts:
+            - name: logger
+              mountPath: /var/log/app
+      containers:
+        - name: app-container
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /var/log/app
+              while true; do 
+                echo "Log entry" >> /var/log/app/app.log
+                sleep 5
+              done
+          volumeMounts:
+            - name: logger
+              mountPath: /var/log/app
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webapp-ingress
+  namespace: ingress-ns
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: "/"
+spec:
+  rules:
+    - host: kodekloud-ingress.app
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: webapp-svc
+              port:
+                number: 80
+
+---
+# Create an nginx pod called nginx-resolver using the image nginx and expose it internally 
+# with a service called nginx-resolver-service. Test that you are able to look up the service 
+# and pod names from within the cluster. Use the image: busybox:1.28 for dns lookup. Record results in /root/CKA/nginx.svc and /root/CKA/nginx.pod
+kubectl run nginx-resolver --image=nginx
+kubectl expose pod nginx-resolver --name=nginx-resolver-service --port=80 --target-port=80 --type=ClusterIP
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup nginx-resolver-service
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup nginx-resolver-service > /root/CKA/nginx.svc
+kubectl get pod nginx-resolver -o wide
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup <P-O-D-I-P.default.pod> > /root/CKA/nginx.pod
+
+---
+# john-csr.yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: john-developer
+spec:
+  groups:
+  - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZEQ0NBVHdDQVFBd0R6RU5NQXNHQTFVRUF3d0VhbTlvYmpDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRApnZ0VQQURDQ0FRb0NnZ0VCQUw5WFBVeWNZSVQ3TXhFTStMeGUxWklVOUdPR3RlL1N6RDdYYVFOeUVWNXNWMCtiCklLeUI4RCsrcEg3bjdHNndEN2tYdWxWOUxaUW5uRmxKMkQ5bEt6NnU3M1pxaVVKbU1paHNYRHVjZDFLYnZ4TVkKOXp6c1hueGR6YU00OHQ3TnNHa3B6WEVoTEFNWEI0ZFBBVDBpR1p1QjR4RmFnK3lHMXdnUU1iSERoVFJ2Z3BNNwpGUXNQdnNOdjVCTEZEMU5HU2Q5REhFemZDb1ZudmZFWVB6SVhxN2YwVWJoZDZ2QnM2Z3ZuKytWclR5akFmN0ZPCk1zVUZ2K2JPbWZCMWdCc1Q5VjZUb3VsMUkyTTFHNllyS3lMd0hUTDdKUEx6SVpnWTBzQ05zd2NTY1hEc3lLRkoKZkF5WlVLTmp3WXU2NFEvd2J0TzR6TW96ci9ESzRvK0tXSDRtU29rQ0F3RUFBYUFBTUEwR0NTcUdTSWIzRFFFQgpDd1VBQTRJQkFRQUJzV043dkRYWXJVU2prMnFySGZTRWdSYnBrOGttTmIreGVPLzdtWVh6c0RYUG40ZXIzZ0ttCkUxWDB1d2lDdHRIN3V4a2FIL1M5Z1dyNURwNDVYRjBPaWFuZi9RYmdpeU5PbEg1RWRLQlVUeFErTlVMZ2tXYlcKbzgxcVA5Wk02U09wT1hHWHYwaStHdngrdDBRRWI4WFZSTGdjbXVpd1pwRFdkWEh6ZzJ1ZFF3cUJjN21rcURtZwo4SGxyZUVHcERsRy84YkNpeDZROXRBS2NGZVpZT3c0QldWWEJWck5xQWk0eDNVLy9SdkFtVktLMDJlcWErQit1Cnl1cFM0azZRajk0Zkw1KzQrOVMwUEkrbFEva3Q4ZkhwUTdOYkZ5cFZxR3NsandXZWRRaVFGRWpEYnc1SmNuYlMKZlhpSXJSYXZlR1pMcnI0OG8zeUpBVXJzRXo3eW56dEgKLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tCg==
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer
+  namespace: development
+rules:
+- apiGroups: []
+  resources: [pods]
+  verbs: [create, get, list,update,delete]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-binding
+  namespace: development
+subjects:
+- kind: User
+  name: john
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-resolver
+  labels:
+    app: nginx-resolver
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: nginx-resolver
+    image: nginx
+    imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+    ports:
+    - containerPort: port
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: net-policy-2
+  namespace: backend
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: frontend
+    - namespaceSelector:
+        matchLabels:
+          name: databases
+    ports:
+    - protocol: TCP
+      port: 80
+
+#Create a Horizontal Pod Autoscaler with name backend-hpa for the deployment named backend-deployment in the backend namespace with the webapp-hpa.yaml file located under the root folder.
+# Ensure that the HPA scales the deployment based on memory utilization, maintaining an average memory usage of 65% across all pods.
+# Configure the HPA with a minimum of 3 replicas and a maximum of 15.
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deployment
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 65
+
+# Modify the existing web-gateway on cka5673 namespace to handle HTTPS traffic on port 443 for kodekloud.com, using a TLS certificate stored in a secret named kodekloud-tls
+# cluster1-controlplane ~ ➜  kubectl get gateway web-gateway -n cka5673 -o yaml
+---
+# web-gateway.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: web-gateway
+  namespace: cka5673
+spec:
+  gatewayClassName: kodekloud
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: kodekloud.com
+      tls:
+        certificateRefs:
+          - name: kodekloud-tls
+
+# helm ls -A
+# kubectl get deploy -n <NAMESPACE> <DEPLOYMENT-NAME> -o json | jq -r '.spec.template.spec.containers[].image'
+# elm uninstall <RELEASE-NAME> -n <NAMESPACE>
+
+---
+# Your cluster has a failed deployment named backend-api with multiple pods. Troubleshoot the deployment so that all pods are in a running state. Do not make adjustments to the resource limits defined on the deployment pods.
+
+NOTE: A ResourceQuota named cpu-mem-quota is applied to the default namespace and should not be edited or modified.
+SSH into the cluster3-controlplane host
+ssh cluster3-controlplane
+
+1. Check Deployment Status
+Verify the current status of the deployment:
+
+kubectl get deploy
+
+Expected output (shows that only 2 out of 3 pods are running):
+
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+backend-api   2/3     2            2           3m48s
+
+The third pod is not getting scheduled.
+
+2. Find the Root Cause
+Describe the ReplicaSet to check why the third pod is not being created:
+
+kubectl describe replicasets backend-api-7977bfdbd5
+
+The issue is due to ResourceQuota limitations.
+The namespace has a memory limit of 300Mi, and the deployment is exceeding it.
+requests.memory=128Mi, used: requests.memory=256Mi, limited: requests.memory=300Mi
+Warning  FailedCreate  Error creating: pods "backend-api-7977bfdbd5-hpcjw" is forbidden: exceeded quota: cpu-mem-quota, 
+requested: requests.memory=128Mi, used: requests.memory=256Mi, limited: requests.memory=300Mi
+
+3, Modify the Deployment to Fit Within the ResourceQuota
+Edit the deployment and reduce memory requests:
+
+kubectl edit deployment backend-api -n default
+
+Modify the resources section:
+
+resources:
+  requests:
+    cpu: "50m"   # Reduced from 100m to 50m
+    memory: "90Mi"   # Reduced from 128Mi to 90Mi (Fits within quota)
+  limits:
+    cpu: "150m"   
+    memory: "150Mi"
+
+4. Verify the Pods (Still Only 2 Running)
+Check if the new pod is scheduled:
+
+kubectl get pods -n default
+
+If the third pod is still missing, the old ReplicaSet might be preventing it.
+
+5. Delete the Old ReplicaSet to Allow New Pods to Start
+Find the old ReplicaSet:
+
+kubectl get rs -n default
+
+Delete the outdated ReplicaSet:
+
+kubectl delete rs backend-api-7977bfdbd5 -n default
+
+Wait for the new pods to come up.
+
+6. Confirm All Pods Are Running
+kubectl get pods -n default
+---
+
+
+Utilize the official Calico definition file, available at:
+
+https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/tigera-operator.yaml
+
+to deploy the Calico CNI on the cluster.
+
+Make sure to configure the CIDR to 172.17.0.0/16
+
+After the CNI installation, verify that pods can successfully communicate.
+
+Custom Definitions for calico can be retrieved via:
+
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
+
+SSH into the cluster4-controlplane host
+ssh cluster4-controlplane
+---
+
+1. Install the Calico CNI
+Install the operator on your cluster:
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
+
+Note: If you used kubectl apply you might face the following error:
+The CustomResourceDefinition "installations.operator.tigera.io" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes
+
+Download the custom resources necessary to configure Calico to set the CIDR to 172.17.0.0/16:
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
+
+Below is the structure of the final configuration:
+
+# This section includes base Calico installation configuration.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.Installation
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  # Configures Calico networking.
+  calicoNetwork:
+    ipPools:
+    - name: default-ipv4-ippool
+      blockSize: 26
+      cidr: 172.17.0.0/16
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
+
+---
+
+# This section configures the Calico API server.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.APIServer
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+
+Apply the manifest by running the following command:
+kubectl create -f custom-resources.yaml
+
+Verify Calico installation in your cluster.
+watch kubectl get pods -n calico-system
+
+2. Test the pod-to-pod communication.
+Run an nginx image:
+kubectl run web-app --image nginx
+
+Retrieve the IP address of the pod:
+kubectl get pod web-app -o jsonpath='{.status.podIP}'
+
+Test the connection:
+kubectl run test --rm -it -n kube-public --image=jrecord/nettools --restart=Never -- curl <IP>

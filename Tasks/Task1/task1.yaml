@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: log-volume
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: manual
+  hostPath:
+    path: /opt/volume/nginx
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: log-claim
+spec:
+  resources:
+    requests:
+      storage: 200Mi
+  accessModes:
+  - ReadWriteMany                  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+  storageClassName: manual
+
+  
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: logger
+  labels:
+    app: logger
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: logger
+    image: nginx:alpine
+    volumeMounts:
+    - name: log-volume
+      mountPath: /var/www/nginx
+    
+  volumes:
+  - name: log-volume
+    persistentVolumeClaim:
+      claimName: log-claim
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: time-check
+  namespace: dvl1987
+  labels:
+    app: time-check
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: time-check
+    image: busybox
+    command:
+    - /bin/sh
+    - -c
+    - |
+      TIME_FREQ=$(cat /opt/time/TIME_FREQ)
+      echo "Time frequency is set to $TIME_FREQ seconds"
+      # Infinite loop to log the current date and time at the specified frequency
+    - while true; do date; sleep $TIME_FREQ;done > /opt/time/time-check.log
+    volumeMounts:
+    - name: time-volume
+      mountPath: /opt/time
+  volumes:
+  - name: time-volume
+    configMap:
+      name: time-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: time-config
+  namespace: dvl1987
+data:
+  TIME_FREQ: "10"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx-deploy
+  template:
+    metadata:
+      labels:
+        app: nginx-deploy
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: nginx
+        image: nginx:1.16
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: redis
+        image: redis:alpine
+        resources:
+          requests:
+            cpu: 200m
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: data
+          mountPath: /redis-master-data
+        - name: redis-config
+          mountPath: /redis-master
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: redis-config
+        configMap:
+          name: redis-config

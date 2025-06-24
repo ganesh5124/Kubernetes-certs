@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grape-pod-ckad06-str
+  labels:
+    app: grape-pod-ckad06-str
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  volumes:
+  - name: grape-vol-ckad06-str
+    emptyDir: {}
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: grape-vol-ckad06-str
+      mountPath: /var/log/nginx
+  initContainers:
+  - name: busybox
+    image: busybox
+    
+    volumeMounts:
+    - name: grape-vol-ckad06-str
+      mountPath: /usr/src
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: learning-every-minute
+spec:
+  ttlSecondsAfterFinished: 100
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      restartPolicy: OnFailure         # Always, OnFailure, Never
+      containers:
+      - name: learning-every-minute
+        image: busybox:1.28
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        command:
+        - /bin/sh
+        - -c
+        - echo "I am practicing for CKAD certification"
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: app-data-pv
+spec:
+  capacity:
+    storage: 60Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: high-performance-sc
+  local:
+    path: /opt/high-performance-sc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-pvc
+spec:
+  resources:
+    requests:
+      storage: 100Mi
+  accessModes:
+  - ReadWriteOnce                  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+  storageClassName: high-performance-sc
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: database-sc
+provisioner: kubernetes.io/azure-file
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+
+# On cluster1, a new deployment called cube-alpha-apd has been created in the alpha-ns-apd namespace using the image kodekloud/webapp-color:v2. This deployment will test a newer version of the alpha app.
+
+# Configure the deployment in such a way that the alpha-apd-service service routes less than 40% of traffic to the new deployment.
+
+---
+# We have deployed two applications called alpha-color-app and beta-color-app on the default namespace using the kodekloud/webapp-color:v1 and kodekloud/webapp-color:v2.
+
+# We have done all the tests and do not want alpha-color-app deployment to receive traffic from the frontend-service service anymore. So, route all the traffic to another existing deployment.
+
+# Do change the service specifications to route traffic to the beta-color-app deployment.
+
+
+# You can test the application from the terminal by running the curl command with the following syntax: -
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-ckad09-svcn
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /pay
+        pathType: Prefix
+        backend:
+          service:
+            name: pay-service
+            port:
+              number: 8282
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: name
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: false
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /pay
+        pathType: Prefix
+        backend:
+          service:
+            name: pay-service
+            port:
+              number: 8282
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad13-nginx-pod-aecs
+  namespace: ckad13-ns-sa-aecs
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: vault-token
+      mountPath: /var/run/secrets/tokens
+      readOnly: true
+  volumes:
+  - name: vault-token
+    projected:
+      sources:
+      - serviceAccountToken:
+          path: vault-token
+          expirationSeconds: 9000
+          audience: vault
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad16-memory-aecs
+  labels:
+    app: ckad16-memory-aecs
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: ckad16-memory-ctr-aecs
+    image: polinux/stress
+    command:
+    - /bin/sh
+    - -c
+    - stress
+    args:
+    - --vm
+    - '1'
+    - --vm-bytes
+    - 100M
+    - --vm-hang
+    - '1'
+    resources:
+      requests:
+        memory: 10Mi
+      limits:
+        memory: 20Mi

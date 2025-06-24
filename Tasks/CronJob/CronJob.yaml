@@ -17,3 +17,24 @@ spec:
           containers:
           -  image: kodekloud/throw-dice
              name: throw-dice
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: whalesay
+spec:
+  ttlSecondsAfterFinished: 100
+  completions: 10
+  backoffLimit: 6
+  parallelism: 1
+  template:
+    spec:
+      restartPolicy: Never         # Always, OnFailure, Never
+      containers:
+      - name: busybox-cont
+        image: busybox
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        command:
+        - /bin/sh
+        - -c
+        - echo "cowsay I am going to ace CKAD!"
