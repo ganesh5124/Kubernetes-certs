@@ -1,0 +1,284 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data-pv-ckad02-str
+spec:
+  capacity:
+    storage: 128Mi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: local-path
+  hostPath:
+    path: /opt/data-pv-ckad02-str
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc-ckad02-str
+spec:
+  resources:
+    requests:
+      storage: 50Mi
+  accessModes:
+    - ReadWriteOnce               # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+  volumeName: data-pv-ckad02-str
+  storageClassName: local-path
+
+# Task 2
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: my-alarm
+spec:
+  schedule: "0 0 * * 0"
+
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      completions: 1
+      parallelism: 1
+      template:
+        spec:
+          restartPolicy: OnFailure         # Always, OnFailure, Never
+          containers:
+          - name: my-alarm
+            image: busybox:1.28
+            imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+            command:
+            - "/bin/sh"
+            - "-c"
+
+# Task 3
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-httpd-fzkkvrwgms
+  namespace: ckad-pod-design
+  labels:
+    app: ckad-httpd-fzkkvrwgms
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: nginx-custom-environment
+    image: nginx:1.17
+    env:
+      - name: EXAM
+        value: CKAD
+#  task 4
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-pod
+  namespace: ckad-pod-design
+  labels:
+    app: security-context-pod
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: redis-container
+    image: redis
+    securityContext:
+      privileged: true
+
+---
+# Task 5
+apiVersion: v1
+kind: Pod
+metadata:
+  name: static-web-server
+  namespace: ckad-multi-containers
+  labels:
+    app: static-web-server
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: main-container
+    image: alpine
+    command:
+    - /bin/sh
+    - -c
+    - echo "Main application is running"; sleep 3600;
+  initContainers:
+  - name: init-alphine
+    image: alpine
+    command:
+    - /bin/sh
+    - -c
+    - echo "Getting main application ready!"; sleep 10;
+---
+# task 6
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-v2-apd
+  labels:
+    stage: test02
+    test-app: v2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      test-app: v2
+  template:
+    metadata:
+      labels:
+        test-app: v2
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: test-v2
+        image: kodekloud/webapp-color:v2
+
+---
+# task 9
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: name
+spec:
+  strategy:
+
+  replicas: 1
+  selector:
+    matchLabels:
+      app: name
+  template:
+    metadata:
+      labels:
+        app: name
+    
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: name
+        image: image
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        ports:
+        - containerPort: port
+
+---
+# task 13
+apiVersion: v1
+kind: Pod
+metadata:
+  name: messaging-ckad04-svcn
+  labels:
+    tier: msg
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: messaging-ckad04-svcn
+    image: redis:alpine
+    ports:
+    - containerPort: 6379
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-service-ckad04-svcn
+spec:
+  selector:
+    tier: msg
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+# fourteen
+apiVersion: v1
+kind: Service
+metadata:
+  name: radioactive-service
+spec:
+  selector:
+    env: dev
+    mode: exam
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 8080
+    targetPort: 80
+
+
+---
+# task 15
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc15-ckad-service
+spec:
+  selector:
+    run: pod15-ckad-pod
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 443
+    targetPort: 443
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ckad23-sa-aecs
+  namespace: ckad23-nssa-aecs
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wide-access-aecs
+  namespace: ckad23-nssa-aecs
+rules:
+- apiGroups: [""]
+  resources: [pods]
+  verbs: [get, list]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wide-access-rb-aec
+  namespace: ckad23-nssa-aecs
+subjects:
+- kind: ServiceAccount
+  name: chatbot-service-account
+roleRef:
+  kind: Role
+  name: chatbot-service-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# task 17
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad08-top-secret-pod-aecs
+  namespace: ckad08-tp-srt-aecs
+spec:
+  restartPolicy: Never
+  containers:
+  - name: ckad08-top-scrt-ctr-aecs
+    image: registry.k8s.io/busybox
+    command:
+    - ls
+    - "-al"
+    - "/etc/secret-volume"
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /etc/secret-volume
+      readOnly: true
+
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: ckad08-dotfile-secret-aecs
+---

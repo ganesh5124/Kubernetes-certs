@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mc-pod
+  namespace: mc-namespace
+  labels:
+    app: mc-pod
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: mc-pod-1
+    image: nginx:1-alpine
+    env:
+      - name: NODE_NAME
+        value: controlplane
+  - name: mc-pod-2
+    image: busybox:1
+    command:
+    - /bin/sh
+    - -c
+    - while true; do date > /var/log/shared/date.log; sleep 1; done;
+  - name: mc-pod-3
+    image: busybox:1
+    
