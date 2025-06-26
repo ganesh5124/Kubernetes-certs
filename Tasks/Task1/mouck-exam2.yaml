@@ -2,26 +2,27 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: grape-pod-ckad06-str
-  labels:
-    app: grape-pod-ckad06-str
 spec:
-  restartPolicy: Always            # Always, OnFailure, Never
-  volumes:
-  - name: grape-vol-ckad06-str
-    emptyDir: {}
   containers:
   - name: nginx
     image: nginx
     volumeMounts:
-    - name: grape-vol-ckad06-str
-      mountPath: /var/log/nginx
+      - name: grape-vol-ckad06-str
+        mountPath: "/var/log/nginx"
   initContainers:
-  - name: busybox
+  - restartPolicy: Always 
+    name: busybox
     image: busybox
-    
+    command:
+      - "bin/sh"
+      - "-c"
+      - "sleep 10000"
     volumeMounts:
-    - name: grape-vol-ckad06-str
-      mountPath: /usr/src
+      - name: grape-vol-ckad06-str
+        mountPath: "/usr/src"
+  volumes:
+  - name: grape-vol-ckad06-str
+    emptyDir: {}
 
 ---
 apiVersion: batch/v1
@@ -45,6 +46,28 @@ spec:
         - echo "I am practicing for CKAD certification"
 
 ---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  namespace: ckad-job
+  name: learning-every-minute
+spec:
+  schedule: "*/1 * * * *"  # Runs every minute
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: learning-every-minute
+            image: busybox:1.28
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - echo I am practicing for CKAD certification
+          restartPolicy: OnFailure
+
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -59,6 +82,16 @@ spec:
   storageClassName: high-performance-sc
   local:
     path: /opt/high-performance-sc
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - cluster1-node01
+          - cluster1-node02
+          - cluster1-controlplane
 
 ---
 apiVersion: v1
@@ -82,10 +115,100 @@ provisioner: kubernetes.io/azure-file
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 
+---
+# In the dev-apd namespace, one of the developers has performed a rolling update and upgraded the application to a newer version. But somehow, application pods are not being created.
+
+
+# To regain the working state, rollback the application to the previous version.
+
+
+# After rolling the deployment back, on the controlplane node, save the image currently in use to the /root/records/rolling-back-record.txt file and increase the replica count to 4.
+
+
+# You can SSH into the cluster1 using ssh cluster1-controlplane command.
+
+# In this task, we will use the kubectl describe, kubectl get, kubectl rollout and kubectl scale commands. Here are the steps: -
+
+
+# First check the status of the pods: -
+# kubectl get pods -n dev-apd
+
+
+
+# One of the pods is in an error state. By using the kubectl describe command. We can see that there is an issue with the image.
+
+# We can check the revision history of a deployment by using the kubectl history command as follows: -
+
+# kubectl rollout history -n dev-apd deploy webapp-apd  
+
+
+
+# Inspect the revision in detail as follows: -
+
+# kubectl rollout history -n dev-apd deploy webapp-apd --revision=2
+
+
+
+# We found that the image issue happened because of the wrong image tag, and the previous image was correct. As a quick fix, we need to roll back to the previous revision. Use the kubectl rollout command: -
+
+# kubectl rollout undo -n dev-apd deploy webapp-apd
+
+
+
+# After successful rolling back, inspect the updated image: -
+
+# kubectl describe deploy -n dev-apd webapp-apd | grep -i image
+
+
+
+# On the Controlplane node, save the image name to the given path /root/records/rolling-back-record.txt: -
+
+# ssh cluster1-controlplane
+
+# echo "kodekloud/webapp-color" > /root/records/rolling-back-record.txt
+
+
+
+# If the records directory is absent, use the mkdir command to create this directory.
+
+
+
+# NOTE: - To exit from any node, type exit on the terminal or press CTRL + D.
+
+
+
+# And increase the replica count to the 4 with help of kubectl scale command: -
+
+# kubectl scale deploy -n dev-apd webapp-apd --replicas=4
+
+
+
+# Verify it by running the command: kubectl get deploy -n dev-apd
+
+---
+
 # On cluster1, a new deployment called cube-alpha-apd has been created in the alpha-ns-apd namespace using the image kodekloud/webapp-color:v2. This deployment will test a newer version of the alpha app.
 
 # Configure the deployment in such a way that the alpha-apd-service service routes less than 40% of traffic to the new deployment.
 
+# The cube-alpha-apd and ruby-alpha-apd deployment has 5-5 replicas. The alpha-apd-service service now routes traffic to 10 pods in total (5 replicas on the ruby-alpha-apd deployment and 5 replicas from cube-alpha-apd deployment).
+
+# Use the kubectl get command to list the following deployments: -
+
+# kubectl get deploy -n alpha-ns-apd
+
+
+
+
+# Since the service distributes traffic to all pods equally, in this case, approximately 50% of the traffic will go to cube-alpha-apd deployment.
+
+# To reduce this below 40%, scale down the pods on the cube-alpha-apd deployment to the minimum to 2.
+
+# kubectl scale deployment --replicas=2 cube-alpha-apd -n alpha-ns-apd
+
+
+
+# Once this is done, only ~40% of traffic should go to the v2 version.
 ---
 # We have deployed two applications called alpha-color-app and beta-color-app on the default namespace using the kodekloud/webapp-color:v1 and kodekloud/webapp-color:v2.
 
@@ -177,7 +300,7 @@ spec:
     - --vm
     - '1'
     - --vm-bytes
-    - 100M
+    - 15M
     - --vm-hang
     - '1'
     resources:
@@ -185,3 +308,119 @@ spec:
         memory: 10Mi
       limits:
         memory: 20Mi
+
+---
+kubectl create quota ckad19-rqc-aecs -n ckad19-rqc-ns-aecs --hard=count/resourcequotas=1
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ckad19-rqc-aecs
+  namespace: ckad19-rqc-ns-aecs
+spec:
+  hard:
+    count/resourcequotas: "1"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chatbot-service-account
+  namespace: ckad18-research-ns
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chatbot-service-role
+  namespace: ckad18-research-ns
+rules:
+- apiGroups: [""]
+  resources: [pods]
+  verbs: [get, list]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chatbot-service-rolebinding
+  namespace: ckad18-research-ns
+subjects:
+- kind: serviceAccount
+  name: chatbot-service-account
+roleRef:
+  kind: Role
+  name: chatbot-service-role
+  apiGroup: rbac.authorization.k8s.io
+
+
+---
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ckad15-depl-svcn
+  labels:
+    app: nginx-app
+    env: demo 
+spec: 
+  replicas: 2
+  template:
+    metadata:
+      name: nginx-app
+      labels:
+        env: demo 
+        app: nginx-app
+        type: nginx
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx
+          ports:
+          - containerPort: 80
+  selector: 
+    matchLabels:
+      env: demo
+      app: nginx-app
+      type: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ckad15-service-svcn
+spec:
+  selector:
+    app: nginx-app
+    env: demo
+    type: nginx
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  ports:
+  - nodePort: 30085
+    port: 80
+    targetPort: 80
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-flash89-aom
+spec:
+  containers:
+    - name: nginx
+      image: nginx
+      volumeMounts:
+        - name: flash-logs
+          mountPath: /var/log/nginx
+    - name: busybox
+      image: busybox
+      command:
+        - sh
+        - -c
+        - sleep 10000
+      volumeMounts:
+        - name: flash-logs
+          mountPath: /var/log
+  volumes:
+    - name: flash-logs
+      emptyDir: {} 
