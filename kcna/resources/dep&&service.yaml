@@ -8,6 +8,8 @@ metadata:
     env: demo 
 spec: 
   replicas: 2
+  strategy:
+    type: Recreate
   template:
     metadata:
       name: nginx-app
@@ -18,7 +20,7 @@ spec:
     spec:
       containers:
         - name: nginx-container
-          image: nginx
+          image: nginx:latest
           ports:
           - containerPort: 80
   selector: 
@@ -39,6 +41,6 @@ spec:
     type: nginx
   type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
   ports:
-  - nodePort: 30085
+  - nodePort: 30006
     port: 80
     targetPort: 80
