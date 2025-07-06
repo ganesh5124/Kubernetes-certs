@@ -19,6 +19,96 @@ spec:
     - /bin/sh
     - -c
     - while true; do date > /var/log/shared/date.log; sleep 1; done;
+    volumeMounts:
+    - name: shared-volume
+      mountPath: /var/log/shared
   - name: mc-pod-3
     image: busybox:1
-    
+    command:
+    - /bin/sh
+    - -c
+    - tail -f /var/log/shared/date.log
+    volumeMounts:
+    - name: shared-volume
+      mountPath: /var/log/shared
+  volumes:
+  - name: shared-volume
+    emptyDir: {}
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-service
+spec:
+  selector:
+    tier: msg
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-web-app-service
+spec:
+  selector:
+    app: hr-web-app
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30082
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-analytics
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /pv/data-analytics
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: webapp-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kkapp-deploy 
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+    windowSeconds: 300
+
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: analytics-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-deployment
+  updatePolicy:
+    updateMode: Auto
+
+---
