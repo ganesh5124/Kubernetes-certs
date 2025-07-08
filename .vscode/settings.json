@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "kubernetes://schema/v1%40pod": "file:///Users/pepakayalaveeraganeshkumar/DEVOPS/K8%27s/kube4/Tasks/Task1/cka-mock-exam.yaml"
+    }
+}

@@ -96,7 +96,9 @@ spec:
       target:
         type: Utilization
         averageUtilization: 50
-    windowSeconds: 300
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
 
 ---
 apiVersion: autoscaling.k8s.io/v1
@@ -112,3 +114,17 @@ spec:
     updateMode: Auto
 
 ---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: web-gateway
+  namespace: nginx-gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: All
