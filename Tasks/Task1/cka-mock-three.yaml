@@ -1,0 +1,207 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pvviewer
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pvviewer-role
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pvviewer-role-binding
+subjects:
+- kind: ServiceAccount
+  name: pvviewer
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pvviewer-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvviewer
+  labels:
+    app: pvviewer
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: pvviewer
+    image: redis
+    imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+    ports:
+    - containerPort: 6379
+  serviceAccountName: pvviewer
+
+---
+# Task 2
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rancher-sc
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+
+
+---
+# Task 3
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: cm-namespace
+data:
+  ENV: production
+  LOG_LEVEL: info  
+
+---
+# Task 4
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 50000
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lp-pod
+  labels:
+    app: lp-pod
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: lp-pod
+    image: image
+    imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+    ports:
+    - containerPort: port
+  priorityClassName: low-priority
+
+---
+# Task 5
+# We have deployed a new pod called np-test-1 and a service called np-test-service. Incoming connections to this service are not working. Troubleshoot and fix it.
+# Create NetworkPolicy, by the name ingress-to-nptest that allows incoming connections to the service over port 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-to-nptest
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: np-test-1
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 80
+
+---
+# Task 6
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-redis
+  labels:
+    app: dev-redis
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: dev-redis
+    image: redis:alpine
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prod-redis
+  labels:
+    app: prod-redis
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: prod-redis
+    image: redis:alpine
+  tolerations:
+  - key: "env_type"
+    operator: "Equal"
+    value: "production"
+    effect: "NoSchedule"
+---
+# Task 7
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: name
+spec:
+  resources:
+    requests:
+      storage: 1Gi
+  accessModes:
+  - ReadWriteMany                  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany, ReadWriteOncePod
+  storageClassName: rancher-sc
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample
+  labels:
+    app: sample
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: sample
+    image: nginx
+    volumeMounts:
+    - name: sample-volume
+      mountPath: /mnt/data
+  
+  volumes:
+  - name: sample-volume
+    persistentVolumeClaim:
+      claimName: app-pvc
+
+# Configure the web-route to split traffic between web-service and web-service-v2.The configuration should ensure that 80% of the traffic is routed to web-service and 20% is routed to web-service-v2.
+
+# Note: web-gateway, web-service, and web-service-v2 have already been created and are available on the cluster.
+---
+# kubectl create -n default -f - <<EOF
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: web-route
+  namespace: default
+spec:
+  parentRefs:
+    - name: web-gateway
+      namespace: default
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: web-service
+          port: 80
+          weight: 80
+        - name: web-service-v2
+          port: 80
+          weight: 20
+# EOF

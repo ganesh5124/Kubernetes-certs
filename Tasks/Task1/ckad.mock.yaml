@@ -1,0 +1,274 @@
+# Task 1
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: simple-python-job
+  namespace: ckad-job
+spec:
+  schedule: "*/30 * * * *"
+
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      completions: 1
+      parallelism: 1
+      template:
+        spec:
+          restartPolicy: OnFailure         # Always, OnFailure, Never
+          containers:
+          - name: simple-python-job
+            image: python
+            imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+            command:
+            - /bin/sh
+            - -c
+            - ps -eaf
+---
+# Task 2
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-nginx-uahsbcbdkl
+  namespace: ckad-pod-design
+  labels:
+    app: ckad-nginx-uahsbcbdkl
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: ckad-nginx-uahsbcbdkl
+    image: nginx:1.17
+    env:
+      - name: TRAINER
+        value: KODEKLOUD
+
+---
+# Task 3
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ckad-busybox-gsqodeuykj
+  namespace: ckad-pod-design
+  labels:
+    app: ckad-busybox-gsqodeuykj
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: busybox-server
+    image: busybox:1.28
+    command:
+    - /bin/sh
+    - -c
+    - sleep 3600
+
+---
+# task 4
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cuda-pod
+  namespace: ckad-multi-containers
+  labels:
+    app: cuda-pod
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: alpha
+    image: alpine
+    env:
+      - name: release
+        value: stable
+    command:
+    - /bin/sh
+    - -c
+    - sleep 3600
+  - name: beta
+    image: nginx:1.17
+    ports:
+      - containerPort: 8080
+
+# Task5
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: custom-nginx
+  namespace: ckad-pod-design
+  labels:
+    app: custom-nginx
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: custom-nginx
+    image: nginx:1.17
+    command:
+    - /bin/sh
+    - -c
+    - echo "Welcome to CKAD mock exams!" > /usr/share/nginx/html/inde.html 
+
+---
+# Task 8
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue-apd
+  labels:
+    type-one: blue
+    version: v1
+spec:
+  replicas: 7
+  selector:
+    matchLabels:
+      type-one: blue
+      version: v1
+  template:
+    metadata:
+      labels:
+        type-one: blue
+        version: v1
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: blue-apd
+        image: kodekloud/webapp-color:v1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-apd
+  labels:
+    type-two: green
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      type-two: green
+      version: v1
+  template:
+    metadata:
+      labels:
+        type-two: green
+        version: v1
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: green-apd
+        image: kodekloud/webapp-color:v2
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: route-apd-svc
+spec:
+  selector:
+    version: v1
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    NodePort: 30004
+
+---
+# Task 9
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb1-ckad17-svcn
+spec:
+  selector:
+    exam: ckad
+    criteria: location
+  type: LoadBalancer                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 31890
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb2-ckad17-svcn
+spec:
+  selector:
+    exam: ckad
+    criteria: cpu-high
+  type: LoadBalancer                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 80
+    targetPort: 80 
+    nodePort: 31891
+---
+# Task 11
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svcn
+spec:
+  selector:
+    app: nginx-app-ckad
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+
+  - name: https
+    port: 443
+    targetPort: 443
+
+---
+# task 13
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-creater
+  namespace: ckad20-auth-aecs
+rules:
+- apiGroups: [""]
+  resources: [pods]
+  verbs: [get, list, create]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mock-user-binding
+  namespace: ckad20-auth-aecs
+subjects:
+- kind: User
+  name: mock-user
+roleRef:
+  kind: Role
+  name: pod-creater
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+# env: dev
+    # mode: exam
+    # type: external
+
+# env: prod
+    # mode: exam
+    # type: external
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-3421-svcn
+  namespace: spectra-1267
+spec:
+  selector:
+    mode: exam
+    type: external
+  type: ClusterIP                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 8080
+    targetPort: 80
