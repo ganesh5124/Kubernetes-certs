@@ -128,3 +128,28 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+
+`
+# aws ec2 create-key-pair   --key-name devops-kp   --key-type rsa   --query 'KeyMaterial'   --output text > devops-kp.pem
+#     2  chmod 400 devops-kp.pem
+#     3  aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text
+#     4  aws ec2 describe-subnets --filters Name=default-for-az,Values=true --query "Subnets[0].SubnetId" --output text
+#     5  aws ec2 run-instances   --image-id ami-0cd59ecaf368e5ccf   --instance-type t2.micro   --key-name devops-kp   --security-groups default   --subnet-id subnet-0743caee19251ad61    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=devops-ec2}]'
+#     6  aws ec2 run-instances   --image-id ami-0cd59ecaf368e5ccf   --instance-type t2.micro   --key-name devops-kp   --security-groups default   --subnet-id "subnet-0743caee19251ad61"    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=devops-ec2}]'
+#     7  subnet-0743caee19251ad61
+#     8  SUBNET_ID=$(aws ec2 describe-subnets --filters Name=default-for-az,Values=true --query "Subnets[0].SubnetId" --output text)
+#     9  echo $SUBNET_ID=$
+#    10  echo $SUBNET_ID
+#    11  aws ec2 run-instances   --image-id ami-0cd59ecaf368e5ccf   --instance-type t2.micro   --key-name devops-kp   --security-groups default   --subnet-id "$SUBNET_ID"   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=devops-ec2}]'
+#    12  aws ec2 run-instances   --image-id ami-0cd59ecaf368e5ccf   --instance-type t2.micro   --key-name devops-kp   --security-groups default   --subnet-id "$SUBNET_ID"   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=devops-ec2}]'
+#    13  SECURITY_GROUP_ID=$(aws ec2 describe-security-groups \
+#   --filters Name=group-name,Values=default \
+#   --query "SecurityGroups[0].GroupId" \
+#   --output text)
+#    14  echo $SECURITY_GROUP_ID
+#    15  aws ec2 run-instances   --image-id ami-0cd59ecaf368e5ccf   --instance-type t2.micro   --key-name devops-kp   --security-group-ids "$SECURITY_GROUP_ID"   --subnet-id "$SUBNET_ID"   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=devops-ec2}]'
+#    16  history`
+
+
+vpc-03c817822cf4d3d83
+subnet-01cfbfdb85be32901

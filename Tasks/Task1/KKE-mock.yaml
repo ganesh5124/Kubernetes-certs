@@ -1,0 +1,264 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-share-xfusion
+  labels:
+    app: volume-share-xfusion
+spec:
+  restartPolicy: Always            # Always, OnFailure, Never
+  containers:
+  - name: volume-container-xfusion-1
+    image: debian:latest
+    command:
+    - /bin/sh
+    - -c
+    - sleep 36000
+    volumeMounts:
+    - name: volume-share
+      mountPath: /tmp/beta
+  - name: volume-container-xfusion-2
+    image: debian:latest
+    command:
+    - /bin/sh
+    - -c
+    - sleep 36000
+    volumeMounts:
+    - name: volume-share
+      mountPath: /tmp/apps
+  volumes:
+  - name: volume-share
+    emptyDir: {}
+
+---
+# Task 2
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webserver
+spec:
+  restartPolicy: Always
+  containers:
+  - name: nginx-container
+    image: nginx:latest
+    volumeMounts:
+      - name: shared-logs
+        mountPath: /var/log/nginx
+  - name: sidecar-container
+    image: ubuntu:latest
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          cat /var/log/nginx/access.log /var/log/nginx/error.log;
+          sleep 30;
+        done
+    volumeMounts:
+      - name: shared-logs
+        mountPath: /var/log/nginx
+  volumes:
+    - name: shared-logs
+      emptyDir: {}
+---
+# Task 3
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-deployment
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: nginx-container
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx-deployment
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30011
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: print-envars-greeting
+  labels:
+    app: print-envars-greeting
+spec:
+  restartPolicy: Never            # Always, OnFailure, Never
+  containers:
+  - name: print-env-container
+    image: bash
+    env:
+      - name: GREETING
+        value: Welcome to
+      - name: COMPANY
+        value: xFusionCorp
+      - name: GROUP
+        value: Datacenter
+    command: ["/bin/sh", "-c", 'echo "$(GREETING) $(COMPANY) $(GROUP)"']
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpd-deploy
+  namespace: xfusion
+  labels:
+    app: httpd-deploy
+spec:
+  replicas: 2
+  stratagey:
+    type: RollingUpdate
+  maxSurge: 1
+  maxUnavailable: 2 
+  selector:
+    matchLabels:
+      app: httpd-deploy
+  template:
+    metadata:
+      labels:
+        app: httpd-deploy
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: httpd
+        image: httpd:2.4.27
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd-service
+spec:
+  selector:
+    app: httpd-deploy
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30008
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-service
+  namespace: jenkins
+spec:
+  selector:
+    app: jenkins
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-deployment
+  namespace: jenkins
+  labels:
+    app: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: jenkins-container
+        image: jenkins/jenkins
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        ports:
+        - containerPort: 8080
+
+# 1.) Create a deployment named grafana-deployment-xfusion using any grafana image for Grafana app. Set other parameters as per your choice.
+
+
+# 2.) Create NodePort type service with nodePort 32000 to expose the app.
+
+
+# You need not to make any configuration changes inside the Grafana app once deployed, just make sure you are able to access the Grafana login page.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      restartPolicy: Always            # Always, OnFailure, Never
+      containers:
+      - name: redis-container
+        image: redis:alpine
+        imagePullPolicy: IfNotPresent  # Always, IfNotPresent, Never
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 1000m
+        volumeMounts:
+        - name: data
+          mountPath: /redis-master-data
+        - name: redis-config
+          mountPath: /redis-master
+      volumes:
+      - name: redis-config
+        configMap:
+          name: my-redis-config
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: redis
+  type: NodePort                    # ClusterIP, NodePort, LoadBalancer, ExternalName
+  #  sessionAffinity: ClientIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    nodePort: 30012
