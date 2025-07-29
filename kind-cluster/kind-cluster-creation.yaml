@@ -34,3 +34,6 @@ nodes:
   extraPortMappings:
   - containerPort: 30007
     hostPort: 30007
+networking:
+  disableDefaultCNI: true
+  podSubnet: 192.168.0.0/16

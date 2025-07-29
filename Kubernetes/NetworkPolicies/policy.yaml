@@ -1,0 +1,57 @@
+# kubectl create ns one
+# kubectl run nginx --image nginx --port 80 --labels app=one -n one
+# kubectl -n one expose pod nginx --type ClusterIP --port 80 --target-port 80 --name nginx-svc --labels app=one
+# kubectl get all -n one
+# kubectl create ns two
+# kubectl run nginx2 --image nginx --port 80 --labels app=two -n two
+# kubectl -n two expose pod nginx2 --type ClusterIP --port 80 --target-port 80 --name nginx-svc2 --labels app=two
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-db
+spec:
+  podSelector:
+    matchLabels:
+      app: database
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: backend
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  ingress:
+    - from:
+      - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 80
+
+# It denies all the Ingress traffic
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+
+  
