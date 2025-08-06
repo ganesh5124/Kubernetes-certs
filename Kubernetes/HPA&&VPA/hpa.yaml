@@ -1,0 +1,95 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ckad15-depl-svcn
+  labels:
+    app: nginx-app
+    env: demo 
+spec: 
+  replicas: 2
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      name: nginx-app
+      labels:
+        env: demo 
+        app: nginx-app
+        type: nginx
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx:latest
+          ports:
+          - containerPort: 80
+  selector: 
+    matchLabels:
+      env: demo
+      app: nginx-app
+      type: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ckad15-service-svcn
+spec:
+  selector:
+    app: nginx-app
+    env: demo
+    type: nginx
+  type: NodePort                      # ClusterIP, NodePort, LoadBalancer, ExternalName
+  ports:
+  - nodePort: 30006
+    port: 80
+    targetPort: 80
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutscalar
+metadata:
+  name: ckad15-hpa-svcn
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ckad15-depl-svcn
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: 100m
+  - type: Object
+    object:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: 100m
+      describedObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: ckad15-depl-svcn
+        selector:
+          matchLabels:
+            app: nginx-app
+            env: demo
+            type: nginx
