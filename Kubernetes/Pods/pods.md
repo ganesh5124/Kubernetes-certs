@@ -34,6 +34,10 @@
 ```
 
 
+## Ambassador Pattern
+* The Ambassador Pattern involves containers that act as proxies between the pod and external systems. Unlike the sidecar pattern, the ambassador is focused on handling external communication.
+
+
 
 
 
